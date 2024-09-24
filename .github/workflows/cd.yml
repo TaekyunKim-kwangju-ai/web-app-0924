@@ -1,9 +1,12 @@
-name: CI
+name: CD
 
-on: pull_request
+on:
+  push:
+    branches:
+      - main
 
 jobs:
-  build-frontend:
+  deploy-frontend:
     runs-on: ubuntu-latest
     defaults:
         run:
@@ -24,8 +27,14 @@ jobs:
       - name: Build frontend
         run: npm run build
 
-  build-backend:
+      - name: Deploy to S3
+        run: aws s3 sync build/ s3:///simple-react-taekkim --delete
+
+  deploy-backend:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+          working-directory: backend
 
     steps:
       - name: Checkout code
@@ -38,18 +47,8 @@ jobs:
 
       - name: Install backend dependencies
         run: |
-          cd backend
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run backend tests
-        run: |
-          cd backend
-          python -m unittest discover  # 유닛 테스트 실행 (테스트 파일 필요)
-
-      - name: Run backend tests
-        run: |
-          cd backend
-            flask run > output.log 2>&1 &
-            sleep 5
-            kill $!
+      - name: Zappa update
+        run: zappa update dev
